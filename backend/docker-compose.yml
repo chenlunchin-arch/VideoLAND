@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: video_platform
+      POSTGRES_PASSWORD: video_platform
+      POSTGRES_DB: video_platform
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U video_platform']
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    environment:
+      # 蓋掉 .env 裡的 DATABASE_URL，強制指向這個 compose 起的 postgres 服務，
+      # 避免 .env 裡殘留本機開發用的其他資料庫設定造成混淆
+      DATABASE_URL: postgresql://video_platform:video_platform@postgres:5432/video_platform
+
+volumes:
+  postgres_data:

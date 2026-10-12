@@ -1,0 +1,48 @@
+name: Backend Deploy (Docker image)
+
+# 這支 workflow 只負責把 backend 打包成 Docker image 並推到 GitHub Container
+# Registry（ghcr.io）。如果你改用 Railway / Render 這類平台，它們自己的
+# GitHub 整合通常會偵測 push 自動重新部署，這支 workflow 就不一定需要了，
+# 留著也無妨（純粹多推一份 image，不會互相干擾）。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ghcr.io/${{ github.repository }}/backend:latest,ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+
+      # 範例：如果要在 image 推上去之後，透過 SSH 到自己的 VPS 重新拉取並重啟，
+      # 可以打開下面這段（需要先在 repo secrets 設定 DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY）。
+      # - name: Deploy to VPS over SSH
+      #   uses: appleboy/ssh-action@v1
+      #   with:
+      #     host: ${{ secrets.DEPLOY_HOST }}
+      #     username: ${{ secrets.DEPLOY_USER }}
+      #     key: ${{ secrets.DEPLOY_SSH_KEY }}
+      #     script: |
+      #       docker pull ghcr.io/${{ github.repository }}/backend:latest
+      #       docker compose -f /opt/video-platform/docker-compose.yml up -d

@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  postgres_test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: video_platform_test
+    ports:
+      - '5433:5432'
+    tmpfs:
+      - /var/lib/postgresql/data # 測試用資料庫，不需要落地持久化

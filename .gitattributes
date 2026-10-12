@@ -1,0 +1,50 @@
+# 行尾正規化：專案在 Windows 開發、部署到 Linux 容器，
+# 若任由 core.autocrlf=true 運作，shell script 會被存成 CRLF，
+# 在容器裡執行時會出現 "/bin/sh^M: bad interpreter" 而拒絕啟動。
+# docker-entrypoint.sh 是 Dockerfile 的 ENTRYPOINT，一旦掛掉整個服務起不來。
+
+# 所有文字檔在 repo 內一律存 LF
+* text=auto eol=lf
+
+# ---- Shell script：必須 LF，否則 Linux 容器無法執行 ----
+*.sh text eol=lf
+*.bash text eol=lf
+
+# ---- 容器與 CI 設定 ----
+Dockerfile text eol=lf
+*.dockerignore text eol=lf
+docker-entrypoint.sh text eol=lf
+.dockerignore text eol=lf
+
+# ---- 環境變數檔：LF，避免值尾端被塞入 \r ----
+*.env text eol=lf
+.env* text eol=lf
+.env.example text eol=lf
+
+# ---- 設定與原始碼 ----
+*.json text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.prisma text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+
+# ---- 二進位檔：不要做任何轉換 ----
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.pdf binary
+*.zip binary
+*.7z binary
+*.mp4 binary

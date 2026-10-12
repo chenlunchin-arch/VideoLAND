@@ -1,0 +1,60 @@
+name: Frontend Deploy (GitHub Pages)
+
+# 如果你改用 Vercel / Netlify，它們自己的 GitHub 整合通常會偵測 push
+# 自動建置部署，這支 workflow 就不一定需要了；這裡示範部署到 GitHub Pages
+# 作為免費的預設選項。記得在 repo Settings → Pages 把來源設成
+# "GitHub Actions"，並在 frontend/.env（或 build 環境變數）設定正式的
+# VITE_API_BASE_URL 指向你的正式後端網址。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-deploy.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

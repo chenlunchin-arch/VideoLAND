@@ -1,0 +1,183 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum VideoStatus {
+  draft
+  processing
+  published
+  hidden
+}
+
+enum SubscriptionStatus {
+  active
+  canceled
+  expired
+}
+
+enum LedgerSource {
+  monthly_grant
+  purchase
+  watch
+}
+
+enum OrderType {
+  subscription
+  extra_hours
+}
+
+enum OrderGateway {
+  ecpay
+  stripe
+}
+
+enum OrderStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum PlaybackStatus {
+  active
+  ended
+  blocked
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(user)
+  createdAt    DateTime @default(now())
+
+  subscriptions UserSubscription[]
+  ledgerEntries MinuteLedger[]
+  orders        Order[]
+  playbackSessions PlaybackSession[]
+}
+
+// 方案設定，後台可調整每月時數與月費
+model MembershipTier {
+  id             String   @id @default(uuid())
+  level          Int      @unique // 1 / 2 / 3
+  monthlyMinutes Int
+  monthlyPrice   Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  subscriptions UserSubscription[]
+}
+
+model UserSubscription {
+  id                     String             @id @default(uuid())
+  userId                 String
+  user                   User               @relation(fields: [userId], references: [id])
+  tierId                 String
+  tier                   MembershipTier     @relation(fields: [tierId], references: [id])
+  status                 SubscriptionStatus @default(active)
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  autoRenew              Boolean            @default(true)
+  gatewaySubscriptionId  String?            // Stripe Subscription ID
+  ecpayMerchantTradeNo   String?            // 綠界定期定額的委託編號，取消訂閱時要用這個呼叫終止 API
+}
+
+// 時數帳本：每月發放、加購、消耗都是一筆紀錄，剩餘量 = 加總
+// 這個設計天然支援「時數可累積到下個月」
+model MinuteLedger {
+  id             String       @id @default(uuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  period         String       // 例如 "2026-08"，標記發放/歸屬月份
+  source         LedgerSource
+  minutes        Int          // 正數＝新增額度，負數＝扣除（觀看消耗）
+  relatedOrderId String?
+  createdAt      DateTime     @default(now())
+
+  @@index([userId])
+}
+
+model ExtraHourPricing {
+  id        String   @id @default(uuid())
+  price     Int      // 每小時價格，後台可調整
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id        String  @id @default(uuid())
+  name      String  @unique
+  sortOrder Int     @default(0)
+
+  videos Video[]
+}
+
+model Video {
+  id              String      @id @default(uuid())
+  title           String
+  categoryId      String
+  category        Category    @relation(fields: [categoryId], references: [id])
+  durationMinutes Int
+  description     String?
+  status          VideoStatus @default(draft)
+  posterUrl       String?
+  rawS3Key        String?     // 原始檔在 S3 的位置，轉檔工作的輸入來源
+  transcodeJobId  String?     // MediaConvert Job ID，webhook 靠這個關聯回是哪部影片
+  createdAt       DateTime    @default(now())
+
+  renditions VideoRendition[]
+  playbackSessions PlaybackSession[]
+}
+
+// 各碼率的 HLS 存放位置，由轉檔工作完成後寫入
+model VideoRendition {
+  id      String @id @default(uuid())
+  videoId String
+  video   Video  @relation(fields: [videoId], references: [id])
+  quality String // 1080p / 720p / 480p
+  s3Path  String
+}
+
+// 對應「開始播放 -> 心跳 -> 結束」機制
+model PlaybackSession {
+  id              String         @id @default(uuid())
+  userId          String?        // 訪客為 null
+  guestToken      String?        // 訪客身份用 cookie/token 綁定
+  user            User?          @relation(fields: [userId], references: [id])
+  videoId         String
+  video           Video          @relation(fields: [videoId], references: [id])
+  startedAt       DateTime       @default(now())
+  lastHeartbeatAt DateTime       @default(now())
+  endedAt         DateTime?
+  minutesConsumed Int            @default(0)
+  status          PlaybackStatus @default(active)
+
+  @@index([userId, videoId])
+  @@index([guestToken, videoId])
+}
+
+model Order {
+  id            String       @id @default(uuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  type          OrderType
+  amount        Int
+  currency      String       @default("TWD")
+  gateway       OrderGateway
+  gatewayTxnId  String?
+  status        OrderStatus  @default(pending)
+  metadata      Json?        // extra_hours: { "hours": 10 }；subscription: { "tierId": "..." }
+  createdAt     DateTime     @default(now())
+}
