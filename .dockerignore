@@ -1,0 +1,22 @@
+# 後端檔案已搬到 repo 根目錄，Docker build context 變成「整個 repo」，
+# 因此必須明確排除前端與其他非後端內容，否則 image 會白白多打包數十 MB。
+
+node_modules
+dist
+dist-seed
+
+.env
+.env.*
+!.env.example
+
+.git
+.github
+
+# 非後端內容
+frontend
+legal
+video-platform.jsx
+*.md
+
+*.log
+deepseek-harness
