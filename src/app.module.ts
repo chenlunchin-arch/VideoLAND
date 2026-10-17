@@ -8,6 +8,7 @@ import { VideosModule } from './videos/videos.module';
 import { MembershipModule } from './membership/membership.module';
 import { PaymentsModule } from './payments/payments.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     PlaybackModule,
     PaymentsModule,
     NotificationsModule,
+    HealthModule,
   ],
   providers: [
     {

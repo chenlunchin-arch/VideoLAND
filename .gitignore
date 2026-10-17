@@ -5,3 +5,5 @@ dist-seed
 .env.*
 !.env.example
 *.log
+*.tsbuildinfo
+.DS_Store
