@@ -24,5 +24,10 @@ COPY prisma ./prisma
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
-EXPOSE 3000
+# Keep the default port identical to the one bound on the platform. If these
+# two drift apart the container listens on one port while the proxy forwards to
+# another, and the symptom is a plain "connection refused" with no error in the
+# logs at all. Override with the PORT env var when needed.
+ENV PORT=3005
+EXPOSE 3005
 ENTRYPOINT ["./docker-entrypoint.sh"]

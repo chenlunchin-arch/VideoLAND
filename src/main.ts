@@ -37,9 +37,9 @@ function buildCorsOptions(): CorsOptions {
   const isDev = (process.env.NODE_ENV || 'development') !== 'production';
   const devOrigins = [
     'http://localhost:5173',
-    'http://localhost:3000',
+    'http://localhost:3005',
     'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3005',
   ];
 
   const allowed = isDev ? [...new Set([...configured, ...devOrigins])] : configured;
@@ -104,6 +104,6 @@ async function bootstrap() {
   const { httpAdapter } = app.get(HttpAdapterHost);
   app.useGlobalFilters(new SentryExceptionFilter(httpAdapter));
 
-  await app.listen(process.env.PORT || 3000);
+  await app.listen(process.env.PORT || 3005);
 }
 bootstrap();

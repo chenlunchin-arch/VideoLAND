@@ -4,7 +4,7 @@
 # 用法：docker compose up -d --build 之後，等 backend 啟動完成再執行：
 #   ./scripts/smoke-test.sh
 set -e
-BASE="${BASE_URL:-http://localhost:3000}"
+BASE="${BASE_URL:-http://localhost:3005}"
 PASS=0
 FAIL=0
 COOKIE_JAR=$(mktemp)
